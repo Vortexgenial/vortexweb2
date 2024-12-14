@@ -1,55 +1,77 @@
-const blockedUsers = JSON.parse(localStorage.getItem('blockedUsers')) || [];
+const video = document.getElementById('video');
 
-// Función para bloquear un usuario
+const canvas = document.getElementById('canvas');
 
-function blockUser(userId) {
+const context = canvas.getContext('2d');
 
-    if (!blockedUsers.includes(userId)) {
+// Acceder a la cámara web
 
-        blockedUsers.push(userId);
+navigator.mediaDevices.getUserMedia({ video: true })
 
-        localStorage.setItem('blockedUsers', JSON.stringify(blockedUsers));
+    .then(stream => {
 
-        alert(`Usuario ${userId} bloqueado.`);
+        video.srcObject = stream;
 
-    }
+        video.onloadedmetadata = () => {
+
+            video.play();
+
+            detectObjects();
+
+        };
+
+    })
+
+    .catch(err => {
+
+        console.error("Error al acceder a la cámara: ", err);
+
+    });
+
+async function detectObjects() {
+
+    const model = await cocoSsd.load();
+
+    console.log("Modelo cargado");
+
+    const detect = async () => {
+
+        const predictions = await model.detect(video);
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        predictions.forEach(prediction => {
+
+            context.beginPath();
+
+            context.rect(...prediction.bbox);
+
+            context.lineWidth = 2;
+
+            context.strokeStyle = 'red';
+
+            context.fillStyle = 'red';
+
+            context.stroke();
+
+            context.fillText(
+
+                `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+
+                prediction.bbox[0],
+
+                prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
+
+            );
+
+        });
+
+        requestAnimationFrame(detect);
+
+    };
+
+    detect();
 
 }
-
-// Función para verificar si un usuario está bloqueado
-
-function isUserBlocked(userId) {
-
-    return blockedUsers.includes(userId);
-
-}
-
-// Ejemplo de cómo usar estas funciones
-
-function initiateCallToUser(userId) {
-
-    if (isUserBlocked(userId)) {
-
-        alert(`No puedes llamar al usuario ${userId} porque está bloqueado.`);
-
-        return;
-
-    }
-
-    // Código para iniciar la llamada al usuario
-
-}
-
-// Botón para bloquear usuario (aquí deberías proporcionar un método para ingresar el ID del usuario)
-
-const blockButton = document.getElementById('blockButton');
-
-blockButton.addEventListener('click', () => {
-
-    const userId = prompt('Ingrese el ID del usuario a bloquear:');
-
-    blockUser(userId);
-
-});
-
-
